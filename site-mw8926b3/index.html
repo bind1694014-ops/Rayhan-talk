@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Rayhan Walkie Talkie</title>
+    <style>
+        :root {
+            --bg: #0f0c29;
+            --glass: rgba(255, 255, 255, 0.1);
+            --primary: #7c3aed;
+            --accent: #00d4ff;
+            --text: #ffffff;
+            --danger: #ef4444;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); color: var(--text); height: 100vh; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+        
+        #app { width: 100%; max-width: 400px; height: 100%; display: flex; flex-direction: column; padding: 20px; position: relative; }
+        
+        .screen { display: none; flex-direction: column; align-items: center; justify-content: center; height: 100%; width: 100%; animation: fadeIn 0.3s ease; }
+        .screen.active { display: flex; }
+        
+        h1 { font-size: 1.8rem; margin-bottom: 2rem; text-shadow: 0 0 10px var(--primary); }
+        .card { background: var(--glass); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 2rem; width: 100%; text-align: center; }
+        
+        button { background: var(--primary); color: white; border: none; padding: 15px 30px; border-radius: 50px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: 0.3s; width: 100%; margin-top: 10px; }
+        button:active { transform: scale(0.95); }
+        button.secondary { background: transparent; border: 1px solid var(--primary); }
+        
+        input { background: rgba(0,0,0,0.3); border: 1px solid var(--primary); padding: 15px; border-radius: 12px; color: white; width: 100%; margin-bottom: 10px; text-align: center; font-size: 1.2rem; }
+        
+        /* Walkie Talkie UI */
+        #mic-btn { width: 150px; height: 150px; border-radius: 50%; background: radial-gradient(circle, var(--primary), #4c1d95); border: 4px solid var(--accent); box-shadow: 0 0 20px var(--primary); margin: 30px 0; transition: 0.2s; position: relative; display: flex; align-items: center; justify-content: center; font-size: 3rem; }
+        #mic-btn.active { box-shadow: 0 0 40px var(--accent); transform: scale(1.1); }
+        
+        .status-dot { width: 10px; height: 10px; background: var(--accent); border-radius: 50%; display: inline-block; margin-right: 5px; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        #visualizer { width: 100%; height: 50px; display: flex; align-items: center; justify-content: center; gap: 5px; margin-bottom: 20px; }
+        .bar { width: 4px; background: var(--accent); animation: bounce 0.5s infinite alternate; }
+        @keyframes bounce { from { height: 10px; } to { height: 40px; } }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <!-- Home Screen -->
+    <div id="home-screen" class="screen active">
+        <h1>RAYHAN WALKIE</h1>
+        <div class="card">
+            <button onclick="showScreen('create-screen')">CREATE ROOM</button>
+            <button class="secondary" onclick="showScreen('join-screen')">JOIN ROOM</button>
+        </div>
+    </div>
+
+    <!-- Create Room -->
+    <div id="create-screen" class="screen">
+        <h2>NEW ROOM</h2>
+        <div class="card">
+            <h2 id="room-code-display" style="font-size: 2.5rem; color: var(--accent);">000000</h2>
+            <p>Share this code with your friend.</p>
+            <button onclick="startRoom()">START</button>
+            <button class="secondary" onclick="showScreen('home-screen')">BACK</button>
+        </div>
+    </div>
+
+    <!-- Join Room -->
+    <div id="join-screen" class="screen">
+        <h2>JOIN ROOM</h2>
+        <input type="text" id="join-code" placeholder="Enter 6-digit code" maxlength="6">
+        <button onclick="startRoom()">CONNECT</button>
+        <button class="secondary" onclick="showScreen('home-screen')">BACK</button>
+    </div>
+
+    <!-- Live Screen -->
+    <div id="live-screen" class="screen">
+        <div id="visualizer" style="display:none;"></div>
+        <div class="card">
+            <h3 id="room-label">Room: ---</h3>
+            <div id="mic-btn" onpointerdown="startTalk()" onpointerup="stopTalk()">🎙️</div>
+            <p id="mic-status">Hold button to speak</p>
+            <button class="secondary" style="background:var(--danger); border:none;" onclick="location.reload()">LEAVE</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        if(id === 'create-screen') {
+            const code = Math.floor(100000 + Math.random() * 900000);
+            document.getElementById('room-code-display').innerText = code;
+        }
+    }
+
+    async function startRoom() {
+        showScreen('live-screen');
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            console.log("Audio Stream Active");
+        } catch(e) {
+            alert("Microphone access is required for Walkie Talkie.");
+        }
+    }
+
+    function startTalk() {
+        const btn = document.getElementById('mic-btn');
+        const viz = document.getElementById('visualizer');
+        const status = document.getElementById('mic-status');
+        btn.classList.add('active');
+        viz.style.display = 'flex';
+        status.innerText = "Transmitting...";
+        
+        // Populate visualizer
+        viz.innerHTML = '';
+        for(let i=0; i<10; i++) {
+            const div = document.createElement('div');
+            div.className = 'bar';
+            div.style.animationDelay = (i * 0.1) + 's';
+            viz.appendChild(div);
+        }
+    }
+
+    function stopTalk() {
+        const btn = document.getElementById('mic-btn');
+        const viz = document.getElementById('visualizer');
+        const status = document.getElementById('mic-status');
+        btn.classList.remove('active');
+        viz.style.display = 'none';
+        status.innerText = "Hold button to speak";
+    }
+
+    // Initialize
+    try {
+        if(!localStorage.getItem('user_id')) {
+            localStorage.setItem('user_id', 'User_' + Math.floor(Math.random()*1000));
+        }
+    } catch(e) {}
+</script>
+</body>
+</html>
